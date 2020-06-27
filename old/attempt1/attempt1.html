@@ -1,0 +1,82 @@
+<meta charset="utf-8">
+
+<head>
+    <!-- The core Firebase JS SDK is always required and must be listed first -->
+    <script src="/__/firebase/7.15.5/firebase-app.js"></script>
+    <script src="/__/firebase/7.15.4/firebase-auth.js"></script>
+    <script src="/__/firebase/7.15.4/firebase-firestore.js"></script>
+
+    <!-- TODO: Add SDKs for Firebase products that you want to use
+         https://firebase.google.com/docs/web/setup#available-libraries -->
+
+    <!-- Initialize Firebase -->
+    <script src="/__/firebase/init.js"></script>
+
+</head>
+<body></body>
+<script type="module">
+    import {html, render} from 'https://unpkg.com/lit-html?module';
+
+
+    async function init() {
+        const uid = (await firebase.auth().signInAnonymously()).user.uid;
+        const collection = firebase.firestore().collection('lol');
+
+        async function logPoint({offsetX: x, offsetY: y}) {
+            collection.doc(Math.random().toString()).set({x, y});
+        }
+
+        const state = {
+            points: []
+        };
+
+        collection.onSnapshot(a => {
+
+            const points = a.docs
+                .map(d => ({...d.data(), uid: d.id}));
+
+            state.points = points.map(p => {
+                return {
+                    ...p,
+                    min: Math.min(...points.map(distance.bind(null, p)).filter(m => m > 0))
+                };
+            }).sort((a, b) => b.min - a.min);
+            rerender();
+        });
+
+
+        function distance(p1, p2) {
+            return Math.hypot(p1.x - p2.x, p1.y - p2.y);
+        }
+
+        function calcDistance(points) {
+            const best = points.reduce((a, b) => {
+                const min = Math.min(...points.map(p => distance(p, b)).filter(a => a > 0));
+                const max = a.max || 0;
+                return min > max ? {max: min, ...b} : a;
+            });
+
+            console.log(best);
+        }
+
+
+        function rerender() {
+
+            render(html`
+                <h1>Hi</h1>
+                <div style="position: relative;">
+                    <img src="pic.jpeg" alt="russia" @click="${logPoint}">
+                    ${state.points.map((p, i) =>
+                    html`<div class="point" style="color: white;border: 1px black solid;width: 10px;height: 10px;position: absolute;border-radius: 50%;background: red;left:${p.x}px;top:${p.y}px;">
+ ${i}
+</div>`
+                )}
+                </div>`
+                , document.body);
+        }
+
+        rerender();
+    }
+
+    init();
+</script>

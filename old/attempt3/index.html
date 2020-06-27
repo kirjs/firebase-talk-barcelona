@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Welcome to Firebase Hosting</title>
+
+    <!-- update the version number as needed -->
+    <script defer src="/__/firebase/7.15.5/firebase-app.js"></script>
+    <!-- include only the Firebase features as you need -->
+    <script defer src="/__/firebase/7.15.5/firebase-auth.js"></script>
+    <script defer src="/__/firebase/7.15.5/firebase-firestore.js"></script>
+    <script defer src="/__/firebase/7.15.5/firebase-storage.js"></script>
+    <!-- initialize the SDK after all desired features are loaded -->
+    <script defer src="/__/firebase/init.js"></script>
+
+    <style>
+        body {
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+<script type="module">
+    import {html, render} from 'https://unpkg.com/lit-html?module';
+
+    async function init() {
+
+
+        const state = {
+            title: 'Социальное дистанцирование',
+            uid: (await firebase.auth().signInAnonymously()).user.uid,
+            src: (await firebase.storage().ref('map.jpg').getDownloadURL()),
+            me: {x: 0, y: 0},
+            points: []
+        };
+
+        const locs = firebase.firestore().collection('locs');
+        const me = locs.doc(state.uid);
+
+        function move({offsetX: x, offsetY: y}) {
+            me.set({
+                x, y, uid: state.uid
+            });
+        }
+
+
+        me.onSnapshot(s => {
+            state.me = s.data();
+            rerender();
+        });
+
+        function distance(a, b) {
+            return Math.hypot(a.x - b.x, a.y - b.y);
+        }
+
+        locs.onSnapshot(s => {
+            const points = s.docs.map(d => d.data());
+
+            state.points = points.map(p => {
+                return {...p, min: Math.min(
+                    ...points.map(p2 => distance(p, p2))
+                        .filter(d => d > 0)
+                    )};
+            }).sort((a,b) => b.min - a.min);
+
+            rerender();
+        });
+
+        function getHtml() {
+            return html`
+            <h1>${state.title}</h1>
+            <h2>${state.uid}</h2>
+            <div style="position: relative">
+                <img @click="${move}" style ="width: 700px;" src="${state.src}" alt="Карта GDG">
+
+
+                ${state.points.map((p, i) => html`
+                 <div style="position: absolute;
+                    left: ${p.x - 10}px;
+                    top: ${p.y - 10}px;
+                    "
+                    title="${p.uid}"
+                    >${p.uid === state.uid ? '🦊!!' : '🐶'} ${i} ️</div>
+                `)}
+            </div>
+
+
+            <h3>Всего ${state.points.length}</h3>
+            <div style="display: grid; grid-template-columns: 20px 300px 200px;">
+                ${state.points.map((p, i) => html`
+                 <div>${i}</div>
+                 <div>${p.uid}</div>
+                 <div>${p.min}</div>
+                `)}
+            </div>
+        `;
+        }
+
+        function rerender() {
+
+
+            render(getHtml(), document.body);
+        }
+
+        rerender();
+    }
+
+    init();
+
+</script>
+</body>
+</html>
