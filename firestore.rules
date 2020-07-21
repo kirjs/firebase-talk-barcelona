@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /points/{userid} {
+      allow read: if true;
+      allow write: if request.resource.data.uid == request.auth.uid
+        && userid == request.auth.uid
+        &&  request.resource.data.x < 500
+        &&  request.resource.data.x > 0
+        &&  request.resource.data.y < 500
+        &&  request.resource.data.y > 0
+    }
+  }
+}
